@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trip Ledger & Active Waterfall</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0B0F17;
+      --card: #151D2A;
+      --border: #243247;
+      --text: #F1F5F9;
+      --muted: #94A3B8;
+      --primary: #38BDF8; 
+      --success: #34D399; 
+      --danger: #F87171;  
+      --amber: #FBBF24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 30px 15px; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 950px; margin: 0 auto; display: none; }
+    
+    /* Auth Portal Styles */
+    #authOverlay { display: flex; fixed: top 0 left 0; width: 100vw; height: 100vh; background: var(--bg); position: fixed; top:0; left:0; z-index: 9999; justify-content: center; align-items: center; padding: 15px; }
+    .auth-box { background: var(--card); border: 1px solid var(--border); padding: 30px; border-radius: 14px; max-width: 400px; width: 100%; text-align: center; }
+    .auth-box h2 { font-size: 22px; margin-bottom: 8px; color: #FFF; }
+    .auth-box p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .auth-box input { width: 100%; display: block; margin-bottom: 12px; background: #0E1420; border: 1px solid var(--border); color: var(--text); padding: 12px; font-size: 14px; border-radius: 8px; outline: none; }
+    .auth-box input:focus { border-color: var(--primary); }
+    
+    /* Dashboard Header & Cards */
+    header { margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px; }
+    h1 { font-size: 26px; font-weight: 700; color: #FFF; letter-spacing: -0.02em; }
+    .role-badge { display: inline-block; padding: 4px 10px; font-size: 11px; text-transform: uppercase; border-radius: 20px; font-weight: 700; margin-top: 5px; }
+    .role-badge.admin { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.4); }
+    .role-badge.user { background: rgba(148, 163, 184, 0.2); color: var(--muted); border: 1px solid rgba(148, 163, 184, 0.4); }
+    
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; }
+    .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; }
+    .stat-val.pool { color: var(--primary); }
+    .stat-val.spend { color: var(--danger); }
+    .stat-val.rem { color: var(--success); }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 25px; }
+    .card h2 { font-size: 18px; font-weight: 600; margin-bottom: 6px; color: #FFF; }
+    .card .hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+
+    .form-inline { display: flex; gap: 10px; flex-wrap: wrap; }
+    input[type="text"], input[type="number"], select { background: #0E1420; border: 1px solid var(--border); color: var(--text); padding: 10px 14px; font-size: 14px; border-radius: 8px; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: var(--primary); }
+    
+    .btn { background: var(--primary); color: #0B0F17; font-weight: 600; padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; transition: opacity 0.15s; white-space: nowrap; }
+    .btn:hover { opacity: 0.9; }
+    .btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn.secondary:hover { background: #1E293B; }
+    .btn.action-small { font-size: 12px; padding: 5px 10px; border-radius: 6px; }
+    .btn.pay-spend { background: rgba(251, 191, 36, 0.2); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.4); }
+    .btn.pay-spend:hover { background: var(--amber); color: #0B0F17; }
+    .btn.pay-bal { background: rgba(52, 211, 153, 0.2); color: var(--success); border: 1px solid rgba(52, 211, 153, 0.4); }
+    .btn.pay-bal:hover { background: var(--success); color: #0B0F17; }
+    .btn.danger-outline { background: transparent; border: 1px solid rgba(248,113,113,0.3); color: var(--danger); font-size: 12px; padding: 6px 12px; }
+    .btn.danger-outline:hover { background: rgba(248,113,113,0.1); }
+
+    /* Admin Restriction Guard */
+    .admin-only { display: none; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+    th { text-align: left; padding: 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); }
+    td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .badge.collect { background: rgba(52, 211, 153, 0.15); color: var(--success); border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge.give { background: rgba(248, 113, 113, 0.15); color: var(--danger); border: 1px solid rgba(248, 113, 113, 0.3); }
+    .badge.neutral { background: rgba(148, 163, 184, 0.15); color: var(--muted); }
+
+    .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: #0E1420; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; }
+    .expense-details p { font-size: 14px; font-weight: 600; color: #FFF; }
+    .expense-details span { font-size: 12px; color: var(--muted); }
+    .expense-right { display: flex; align-items: center; gap: 15px; }
+    .expense-amount { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; color: var(--primary); }
+    .expense-amount.reimburse-type { color: var(--amber); }
+
+    @media (max-width: 750px) {
+      .grid-3 { grid-template-columns: 1fr; }
+      .form-inline { flex-direction: column; }
+      .form-inline * { width: 100% !important; }
+      .btn-group-cell { display: flex; flex-direction: column; gap: 5px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Login Modal Portal -->
+<div id="authOverlay">
+  <div class="auth-box">
+    <h2>Secure Gateway Portal</h2>
+    <p>Please log in using your credential access key.</p>
+    <input type="text" id="passphrase" placeholder="Access Passcode Key" onkeydown="if(event.key==='Enter') verifyAuth()">
+    <button class="btn" style="width:100%; margin-top:5px;" onclick="verifyAuth()">Sign In</button>
+    <p style="margin-top: 15px; font-size:11px; text-align: left; background:#0E1420; padding:10px; border-radius:6px; border:1px solid var(--border);">
+      🔑 <strong>Keys:</strong><br>
+      • Admin: <code>vignesh2026</code><br>
+      • User (View-only): <code>trip2026</code>
+    </p>
+  </div>
+</div>
+
+<!-- Main Application Framework Container -->
+<div class="container" id="appDashboard">
+  <header>
+    <div>
+      <h1>Trip Ledger & Waterfall Analyzer</h1>
+      <div id="roleBadgePlacement"></div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn secondary" onclick="downloadCSV()">📥 Export to Excel</button>
+      <button class="btn danger-outline admin-only" onclick="clearAllData()">⚠️ Reset Ledger</button>
+      <button class="btn secondary" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <!-- Metrics Grid -->
+  <div class="grid-3">
+    <div class="stat-card">
+      <div class="stat-label">Total Advance Pool Cash</div>
+      <div class="stat-val pool" id="metricPool">₹0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Spent Value</div>
+      <div class="stat-val spend" id="metricSpend">₹0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Remaining Pool Cash</div>
+      <div class="stat-val rem" id="metricRemaining">₹0</div>
+    </div>
+  </div>
+
+  <!-- Step 1: Members Configuration -->
+  <div class="card admin-only">
+    <h2>1. Families & Upfront Pool Contributions</h2>
+    <p class="hint">Configure group entities. Track headcount metrics and advanced cache pools allocated per individual.</p>
+    <div class="form-inline" style="margin-bottom: 20px;">
+      <input type="text" id="memberName" placeholder="Family / Member Name" style="flex: 2;">
+      <input type="number" id="memberCount" value="1" min="1" placeholder="Headcount" style="width: 100px;">
+      <input type="number" id="memberRate" placeholder="Advance / Head (₹)" style="flex: 1;">
+      <button class="btn" onclick="addMember()">Add Member</button>
+    </div>
+    <table id="membersTable">
+      <thead>
+        <tr><th>Name / Group</th><th>Headcount</th><th>Advance Rate</th><th>Total Contributed</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Step 2: Write Operations -->
+  <div class="card admin-only">
+    <h2>2. Log an Expense</h2>
+    <p class="hint">Route transactions directly into the mutual collection pool asset base, or tag individual custom expenditures.</p>
+    <div class="form-inline">
+      <input type="text" id="expDesc" placeholder="Expense description (e.g., Fuel, Resort)" style="flex: 2;">
+      <input type="number" id="expAmount" placeholder="Amount (₹)" style="flex: 1;">
+      <select id="expPayer" style="flex: 2;"></select>
+      <button class="btn" onclick="addExpense()">Record Expense</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Waterfall Settlement Engine -->
+  <div class="card">
+    <h2>Active Waterfall Reconciliation Sheet</h2>
+    <p class="hint">Real-time status updates. Admins can settle either the out-of-pocket spending amount or the total net balance dynamically using the remaining pool cash.</p>
+    <table id="waterfallTable">
+      <thead>
+        <tr>
+          <th>Person / Family</th>
+          <th>Upfront Pool Cash</th>
+          <th>Out-of-Pocket Spend</th>
+          <th>Proportional Consumption</th>
+          <th>Net Balance Due</th>
+          <th class="admin-only">Pool Settlement Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- History Timeline -->
+  <div class="card">
+    <h2>Active Transaction Records Timeline</h2>
+    <div id="expenseList" style="margin-top: 15px;"></div>
+  </div>
+</div>
+
+<script>
+  let currentRole = null; 
+
+  let state = JSON.parse(localStorage.getItem('trip_matrix_v3')) || {
+    members: [],
+    expenses: []
+  };
+
+  function verifyAuth() {
+    const code = document.getElementById('passphrase').value.trim();
+    if (code === 'vignesh2026') {
+      currentRole = 'admin';
+    } else if (code === 'trip2026') {
+      currentRole = 'user';
+    } else {
+      return alert('Invalid security code key. Try again.');
+    }
+    
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('appDashboard').style.display = 'block';
+    
+    applyRoleVisuals();
+    render();
+  }
+
+  function logout() {
+    currentRole = null;
+    document.getElementById('passphrase').value = '';
+    document.getElementById('authOverlay').style.display = 'flex';
+    document.getElementById('appDashboard').style.display = 'none';
+  }
+
+  function applyRoleVisuals() {
+    const container = document.getElementById('roleBadgePlacement');
+    if (currentRole === 'admin') {
+      container.innerHTML = `<span class="role-badge admin">🛡️ Administrative Access Active</span>`;
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
+    } else {
+      container.innerHTML = `<span class="role-badge user">👁️ Read-Only Ledger View</span>`;
+      document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem('trip_matrix_v3', JSON.stringify(state));
+    render();
+  }
+
+  function fmt(val) {
+    return '₹' + Math.round(val || 0).toLocaleString('en-IN');
+  }
+
+  function addMember() {
+    if (currentRole !== 'admin') return;
+    const nameInput = document.getElementById('memberName');
+    const countInput = document.getElementById('memberCount');
+    const rateInput = document.getElementById('memberRate');
+    
+    const name = nameInput.value.trim();
+    const headcount = parseInt(countInput.value) || 1;
+    const rate = parseFloat(rateInput.value) || 0;
+
+    if (!name) return alert('Enter valid name identifier');
+    if (state.members.some(m => m.name.toLowerCase() === name.toLowerCase())) return alert('Identifier already active');
+
+    state.members.push({
+      id: 'm_' + Date.now(),
+      name,
+      headcount,
+      advance: headcount * rate
+    });
+
+    nameInput.value = '';
+    countInput.value = '1';
+    rateInput.value = '';
+    saveState();
+  }
+
+  function deleteMember(id) {
+    if (currentRole !== 'admin') return;
+    state.members = state.members.filter(m => m.id !== id);
+    saveState();
+  }
+
+  function addExpense() {
+    if (currentRole !== 'admin') return;
+    const descInput = document.getElementById('expDesc');
+    const amountInput = document.getElementById('expAmount');
+    const payerInput = document.getElementById('expPayer');
+
+    const desc = descInput.value.trim();
+    const amount = parseFloat(amountInput.value) || 0;
+    const payerValue = payerInput.value;
+
+    if (!desc || amount <= 0) return alert('Provide complete expense detail configurations');
+
+    state.expenses.push({
+      id: 'e_' + Date.now(),
+      desc,
+      amount,
+      payer: payerValue, 
+      type: payerValue.startsWith('PAY_SPEND:') || payerValue.startsWith('PAY_BAL:') ? 'reimbursement' : 'standard'
+    });
+
+    descInput.value = '';
+    amountInput.value = '';
+    saveState();
+  }
+
+  function processSettle(type, memberId, value) {
+    if (currentRole !== 'admin') return;
+    const m = state.members.find(x => x.id === memberId);
+    if (!m || value <= 0) return;
+
+    const msg = type === 'SPEND' 
+      ? `Refund ONLY Out-of-Pocket spend value (${fmt(value)}) to ${m.name} using pool cash?`
+      : `Settle entire structural net balance value (${fmt(value)}) to ${m.name} using pool cash?`;
+
+    if (confirm(msg)) {
+      state.expenses.push({
+        id: 'e_' + Date.now(),
+        desc: type === 'SPEND' ? `Pool Pay-off: ${m.name}'s Owed Spend` : `Pool Pay-off: Full Settlement (${m.name})`,
+        amount: value,
+        payer: (type === 'SPEND' ? 'PAY_SPEND:' : 'PAY_BAL:') + memberId,
+        type: 'reimbursement'
+      });
+      saveState();
+    }
+  }
+
+  function deleteExpense(id) {
+    if (currentRole !== 'admin') return;
+    state.expenses = state.expenses.filter(e => e.id !== id);
+    saveState();
+  }
+
+  function clearAllData() {
+    if (currentRole !== 'admin') return;
+    if (confirm('Erase database memory banks? Action irreversible.')) {
+      state = { members: [], expenses: [] };
+      saveState();
+    }
+  }
+
+  function render() {
+    applyRoleVisuals();
+
+    // Rebuild Dropdown
+    const payerSelect = document.getElementById('expPayer');
+    if (payerSelect) {
+      payerSelect.innerHTML = '<option value="POOL">🏦 Paid From: Collected Pool Cash</option>';
+      state.members.forEach(m => {
+        payerSelect.innerHTML += `<option value="${m.id}">👤 Paid From: ${m.name}'s Pocket</option>`;
+      });
+    }
+
+    // Totals Processing
+    const totalPoolCollected = state.members.reduce((sum, m) => sum + m.advance, 0);
+    const standardExpenses = state.expenses.filter(e => e.type !== 'reimbursement');
+    const totalTripSpend = standardExpenses.reduce((sum, e) => sum + e.amount, 0);
+    
+    const poolSpentDirectly = state.expenses.filter(e => e.payer === 'POOL').reduce((sum, e) => sum + e.amount, 0);
+    const poolSpentOnReimbursements = state.expenses.filter(e => e.type === 'reimbursement').reduce((sum, e) => sum + e.amount, 0);
+    const remainingPoolCash = totalPoolCollected - poolSpentDirectly - poolSpentOnReimbursements;
+
+    document.getElementById('metricPool').textContent = fmt(totalPoolCollected);
+    document.getElementById('metricSpend').textContent = fmt(totalTripSpend);
+    document.getElementById('metricRemaining').textContent = fmt(remainingPoolCash);
+
+    // Members Grid Render
+    const mBody = document.querySelector('#membersTable tbody');
+    if (mBody) {
+      mBody.innerHTML = '';
+      if (state.members.length === 0) {
+        mBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted);">No records registered.</td></tr>`;
+      }
+      state.members.forEach(m => {
+        mBody.innerHTML += `
+          <tr>
+            <td><strong>${m.name}</strong></td>
+            <td>${m.headcount} Unit(s)</td>
+            <td class="mono">${fmt(m.advance / m.headcount)}</td>
+            <td class="mono" style="color:var(--primary);">${fmt(m.advance)}</td>
+            <td><button class="btn danger-outline" onclick="deleteMember('${m.id}')">✕</button></td>
+          </tr>`;
+      });
+    }
+
+    // Timeline Rendering
+    const expContainer = document.getElementById('expenseList');
+    expContainer.innerHTML = '';
+    if (state.expenses.length === 0) {
+      expContainer.innerHTML = `<div style="text-align:center; color:var(--muted); font-size:14px; padding:20px;">Timeline stream empty.</div>`;
+    }
+    
+    [...state.expenses].reverse().forEach(e => {
+      let contextLabel = "Proportional split division configuration";
+      let classConfig = "expense-amount";
+      
+      if (e.type === 'reimbursement') {
+        const isSpendOnly = e.payer.startsWith('PAY_SPEND:');
+        const targetId = e.payer.replace('PAY_SPEND:', '').replace('PAY_BAL:', '');
+        const targetM = state.members.find(x => x.id === targetId);
+        contextLabel = isSpendOnly 
+          ? `Cash Pool Transaction: Out-of-pocket spent refund issued to ${targetM ? targetM.name : 'Member'}`
+          : `Cash Pool Transaction: Full balance equalization settlement to ${targetM ? targetM.name : 'Member'}`;
+        classConfig += " reimbursement-type";
+      } else if (e.payer !== 'POOL') {
+        const foundM = state.members.find(m => m.id === e.payer);
+        contextLabel = `Paid out-of-pocket by ${foundM ? foundM.name : 'Unknown Entity'}`;
+      } else {
+        contextLabel = "Withdrawn straight from the upfront collective Advance Cash Pool";
+      }
+
+      const delBtn = (currentRole === 'admin') ? `<button class="btn danger-outline" onclick="deleteExpense('${e.id}')">✕</button>` : '';
+
+      expContainer.innerHTML += `
+        <div class="expense-item">
+          <div class="expense-details">
+            <p>${e.desc}</p>
+            <span>${contextLabel}</span>
+          </div>
+          <div class="expense-right">
+            <div class="${classConfig}">${fmt(e.amount)}</div>
+            ${delBtn}
+          </div>
+        </div>`;
+    });
+
+    // Waterfall Computation
+    const waterBody = document.querySelector('#waterfallTable tbody');
+    waterBody.innerHTML = '';
+    
+    if (state.members.length === 0) {
+      waterBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Add entries to map matrix balances.</td></tr>`;
+      return;
+    }
+
+    const totalHeads = state.members.reduce((sum, m) => sum + m.headcount, 0);
+
+    state.members.forEach(m => {
+      const grossPocketSpent = state.expenses.filter(e => e.payer === m.id).reduce((sum, e) => sum + e.amount, 0);
+      
+      // Track different types of pool settlements received
+      const spendRefundsReceived = state.expenses.filter(e => e.payer === 'PAY_SPEND:' + m.id).reduce((sum, e) => sum + e.amount, 0);
+      const balanceSettlementsReceived = state.expenses.filter(e => e.payer === 'PAY_BAL:' + m.id).reduce((sum, e) => sum + e.amount, 0);
+      const totalPoolRefundsReceived = spendRefundsReceived + balanceSettlementsReceived;
+
+      const consumptionShare = totalHeads > 0 ? (totalTripSpend * (m.headcount / totalHeads)) : 0;
+      
+      // Net Remaining Balance Matrix Equation
+      const currentNetBalance = (m.advance + grossPocketSpent) - consumptionShare - totalPoolRefundsReceived;
+      
+      // Calculate remaining active out-of-pocket spend yet to be refunded
+      const activeUnrefundedSpend = Math.max(0, grossPocketSpent - spendRefundsReceived);
+
+      let statusBadge = `<span class="badge neutral">Balanced</span>`;
+      if (currentNetBalance > 0.5) {
+        statusBadge = `<span class="badge collect">Collects ${fmt(currentNetBalance)}</span>`;
+      } else if (currentNetBalance < -0.5) {
+        statusBadge = `<span class="badge give">Owes ${fmt(Math.abs(currentNetBalance))}</span>`;
+      }
+
+      // Render custom actions for administrative users
+      let actionsHtml = '&mdash;';
+      if (currentRole === 'admin') {
+        let buttons = [];
+        if (activeUnrefundedSpend > 0.5) {
+          buttons.push(`<button class="btn action-small pay-spend" onclick="processSettle('SPEND', '${m.id}', ${activeUnrefundedSpend})">💸 Pay Spend (${fmt(activeUnrefundedSpend)})</button>`);
+        }
+        if (currentNetBalance > 0.5) {
+          buttons.push(`<button class="btn action-small pay-bal" onclick="processSettle('BALANCE', '${m.id}', ${currentNetBalance})">🏛️ Settle Bal (${fmt(currentNetBalance)})</button>`);
+        }
+        actionsHtml = buttons.length > 0 ? `<div class="btn-group-cell" style="display:flex; gap:6px;">${buttons.join('')}</div>` : `<span style="color:var(--muted); font-size:12px;">Settled</span>`;
+      }
+
+      waterBody.innerHTML += `
+        <tr>
+          <td><strong>${m.name} <small style="color:var(--muted); font-weight:normal;">(x${m.headcount})</small></strong></td>
+          <td class="mono">${fmt(m.advance)}</td>
+          <td class="mono">${fmt(grossPocketSpent)} <small style="color:var(--amber); display:block; font-size:10px;">Refunded: ${fmt(spendRefundsReceived)}</small></td>
+          <td class="mono" style="color:var(--muted);">${fmt(consumptionShare)}</td>
+          <td>${statusBadge}</td>
+          <td class="admin-only">${actionsHtml}</td>
+        </tr>`;
+    });
+
+    // Toggle conditional admin displays after dynamic population
+    applyRoleVisuals();
+  }
+
+  function downloadCSV() {
+    if (state.expenses.length === 0) return alert('No logs available to download');
+    let csv = 'Description,Amount,Source Configuration Mapping\n';
+    state.expenses.forEach(e => {
+      let sourceText = "Pool Ledger Reserve";
+      if (e.payer.startsWith('PAY_SPEND:')) sourceText = "Pool Pay-off (Spend Only)";
+      else if (e.payer.startsWith('PAY_BAL:')) sourceText = "Pool Pay-off (Full Balance Balance)";
+      else if (e.payer !== 'POOL') {
+        const m = state.members.find(x => x.id === e.payer);
+        sourceText = m ? `${m.name}'s Custom Pocket` : "Independent Entity";
+      }
+      csv += `"${e.desc.replace(/"/g, '""')}",${e.amount},"${sourceText}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "trip_reconciliation_manifest.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+</script>
+</body>
+</html>
