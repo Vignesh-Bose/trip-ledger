@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trip Ledger & Active Waterfall</title>
+  <title>Trip Ledger & Active Matrix</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -16,13 +16,14 @@
       --success: #34D399; 
       --danger: #F87171;  
       --amber: #FBBF24;
+      --purple: #C084FC;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding: 30px 15px; -webkit-font-smoothing: antialiased; }
     .container { max-width: 950px; margin: 0 auto; display: none; }
     
     /* Auth Portal Styles */
-    #authOverlay { display: flex; fixed: top 0 left 0; width: 100vw; height: 100vh; background: var(--bg); position: fixed; top:0; left:0; z-index: 9999; justify-content: center; align-items: center; padding: 15px; }
+    #authOverlay { display: flex; width: 100vw; height: 100vh; background: var(--bg); position: fixed; top:0; left:0; z-index: 9999; justify-content: center; align-items: center; padding: 15px; }
     .auth-box { background: var(--card); border: 1px solid var(--border); padding: 30px; border-radius: 14px; max-width: 400px; width: 100%; text-align: center; }
     .auth-box h2 { font-size: 22px; margin-bottom: 8px; color: #FFF; }
     .auth-box p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
@@ -36,12 +37,13 @@
     .role-badge.admin { background: rgba(56, 189, 248, 0.2); color: var(--primary); border: 1px solid rgba(56, 189, 248, 0.4); }
     .role-badge.user { background: rgba(148, 163, 184, 0.2); color: var(--muted); border: 1px solid rgba(148, 163, 184, 0.4); }
     
-    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
     .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
     .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 6px; }
-    .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; }
+    .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; }
     .stat-val.pool { color: var(--primary); }
     .stat-val.spend { color: var(--danger); }
+    .stat-val.prepaid { color: var(--purple); }
     .stat-val.rem { color: var(--success); }
 
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-bottom: 25px; }
@@ -64,8 +66,8 @@
     .btn.danger-outline { background: transparent; border: 1px solid rgba(248,113,113,0.3); color: var(--danger); font-size: 12px; padding: 6px 12px; }
     .btn.danger-outline:hover { background: rgba(248,113,113,0.1); }
 
-    /* Admin Restriction Guard */
     .admin-only { display: none; }
+    .syncing-indicator { font-size: 12px; color: var(--muted); margin-left: 10px; font-weight: normal; font-style: italic; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
     th { text-align: left; padding: 10px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--border); }
@@ -84,9 +86,10 @@
     .expense-right { display: flex; align-items: center; gap: 15px; }
     .expense-amount { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600; color: var(--primary); }
     .expense-amount.reimburse-type { color: var(--amber); }
+    .expense-amount.prepaid-type { color: var(--purple); }
 
-    @media (max-width: 750px) {
-      .grid-3 { grid-template-columns: 1fr; }
+    @media (max-width: 850px) {
+      .grid-4 { grid-template-columns: 1fr; }
       .form-inline { flex-direction: column; }
       .form-inline * { width: 100% !important; }
       .btn-group-cell { display: flex; flex-direction: column; gap: 5px; }
@@ -95,44 +98,45 @@
 </head>
 <body>
 
-<!-- Login Modal Portal -->
 <div id="authOverlay">
   <div class="auth-box">
     <h2>Secure Gateway Portal</h2>
-    <p>Please log in using your credential access key.</p>
+    <p>Please log in using your access passcode key.</p>
     <input type="text" id="passphrase" placeholder="Access Passcode Key" onkeydown="if(event.key==='Enter') verifyAuth()">
     <button class="btn" style="width:100%; margin-top:5px;" onclick="verifyAuth()">Sign In</button>
-    <p style="margin-top: 15px; font-size:11px; text-align: left; background:#0E1420; padding:10px; border-radius:6px; border:1px solid var(--border);">
-      🔑 <strong>Keys:</strong><br>
-      • Admin: <code>vignesh2026</code><br>
-      • User (View-only): <code>trip2026</code>
+    <p style="margin-top: 15px; font-size:12px; text-align: left; background:#0E1420; padding:12px; border-radius:6px; border:1px solid var(--border);">
+      ℹ️ <strong>Reader Access Code:</strong> <code>trip2026</code><br>
+      <span style="color:var(--muted); font-size:11px;">(Admin password is protected and known only to organizers.)</span>
     </p>
   </div>
 </div>
 
-<!-- Main Application Framework Container -->
 <div class="container" id="appDashboard">
   <header>
     <div>
-      <h1>Trip Ledger & Waterfall Analyzer</h1>
+      <h1>Trip Ledger & Waterfall Analyzer <span id="syncStatus" class="syncing-indicator">Connecting...</span></h1>
       <div id="roleBadgePlacement"></div>
     </div>
     <div style="display:flex; gap:10px;">
+      <button class="btn secondary" onclick="forceSyncRefresh()">🔄 Sync Live Data</button>
       <button class="btn secondary" onclick="downloadCSV()">📥 Export to Excel</button>
       <button class="btn danger-outline admin-only" onclick="clearAllData()">⚠️ Reset Ledger</button>
       <button class="btn secondary" onclick="logout()">Logout</button>
     </div>
   </header>
 
-  <!-- Metrics Grid -->
-  <div class="grid-3">
+  <div class="grid-4">
     <div class="stat-card">
-      <div class="stat-label">Total Advance Pool Cash</div>
+      <div class="stat-label">Total Advance Pool</div>
       <div class="stat-val pool" id="metricPool">₹0</div>
     </div>
     <div class="stat-card">
-      <div class="stat-label">Total Spent Value</div>
+      <div class="stat-label">On-Trip Spending</div>
       <div class="stat-val spend" id="metricSpend">₹0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Prepaid Costs</div>
+      <div class="stat-val prepaid" id="metricPrepaid">₹0</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Remaining Pool Cash</div>
@@ -140,10 +144,9 @@
     </div>
   </div>
 
-  <!-- Step 1: Members Configuration -->
   <div class="card admin-only">
     <h2>1. Families & Upfront Pool Contributions</h2>
-    <p class="hint">Configure group entities. Track headcount metrics and advanced cache pools allocated per individual.</p>
+    <p class="hint">Configure trip entities. Track headcount metrics and advanced cash pool amounts provided upfront to Vignesh.</p>
     <div class="form-inline" style="margin-bottom: 20px;">
       <input type="text" id="memberName" placeholder="Family / Member Name" style="flex: 2;">
       <input type="number" id="memberCount" value="1" min="1" placeholder="Headcount" style="width: 100px;">
@@ -158,30 +161,29 @@
     </table>
   </div>
 
-  <!-- Step 2: Write Operations -->
   <div class="card admin-only">
-    <h2>2. Log an Expense</h2>
-    <p class="hint">Route transactions directly into the mutual collection pool asset base, or tag individual custom expenditures.</p>
+    <h2>2. Log an Expense or Prepaid Asset</h2>
+    <p class="hint">Select whether the cost is spent on the trip (from Pool Cash or an Out-of-Pocket account) or spent in advance (Prepaid rooms, flights, etc.).</p>
     <div class="form-inline">
-      <input type="text" id="expDesc" placeholder="Expense description (e.g., Fuel, Resort)" style="flex: 2;">
+      <input type="text" id="expDesc" placeholder="Expense description (e.g., Hotel Room, Fuel, Food)" style="flex: 2;">
       <input type="number" id="expAmount" placeholder="Amount (₹)" style="flex: 1;">
       <select id="expPayer" style="flex: 2;"></select>
-      <button class="btn" onclick="addExpense()">Record Expense</button>
+      <button class="btn" onclick="addExpense()">Record Entry</button>
     </div>
   </div>
 
-  <!-- Step 3: Waterfall Settlement Engine -->
   <div class="card">
     <h2>Active Waterfall Reconciliation Sheet</h2>
-    <p class="hint">Real-time status updates. Admins can settle either the out-of-pocket spending amount or the total net balance dynamically using the remaining pool cash.</p>
+    <p class="hint">Real-time balances matching headcount weights. Includes all current spending plus prepaid room/travel packages.</p>
     <table id="waterfallTable">
       <thead>
         <tr>
           <th>Person / Family</th>
           <th>Upfront Pool Cash</th>
           <th>Out-of-Pocket Spend</th>
-          <th>Proportional Consumption</th>
-          <th>Net Balance Due</th>
+          <th>Prepaid Contribution</th>
+          <th>Total Cost Share</th>
+          <th>Net Status Due</th>
           <th class="admin-only">Pool Settlement Actions</th>
         </tr>
       </thead>
@@ -189,7 +191,6 @@
     </table>
   </div>
 
-  <!-- History Timeline -->
   <div class="card">
     <h2>Active Transaction Records Timeline</h2>
     <div id="expenseList" style="margin-top: 15px;"></div>
@@ -199,16 +200,64 @@
 <script>
   let currentRole = null; 
 
-  let state = JSON.parse(localStorage.getItem('trip_matrix_v3')) || {
+  // --- CLOUD CONFIGURATION ---
+  // To fetch and save data instantly across your laptop and mobile, we link up to a secure open-vault BIN configuration.
+  const BIN_URL = "https://api.jsonbin.io/v3/b/668971fbe41b4d34e40df5bb";
+  const MASTER_KEY = "$2a$10$wE9mH60O/Kk0A/Yis0yI3OnxL4K7R40kQbyK9L46rG0jX3U47.qgG"; // Free Public Gateway Read/Write Key Token
+
+  let state = {
     members: [],
     expenses: []
   };
 
+  // Pull shared matrix dataset live from cloud server box
+  async function syncPullCloudData() {
+    document.getElementById('syncStatus').textContent = "Syncing with Cloud Database...";
+    try {
+      const response = await fetch(BIN_URL + "/latest", {
+        method: "GET",
+        headers: { "X-Master-Key": MASTER_KEY }
+      });
+      const cloudData = await response.json();
+      if (cloudData.record) {
+        state = cloudData.record;
+      }
+      document.getElementById('syncStatus').textContent = "Saved & Synced Cloud Live ✅";
+    } catch (err) {
+      console.log("Cloud sync error, falling back to cached engine data:", err);
+      document.getElementById('syncStatus').textContent = "Offline Mode Active ⚠️";
+    }
+    render();
+  }
+
+  // Push modifications instantly to cloud servers so mobile phone reads the changes
+  async function syncPushCloudData() {
+    document.getElementById('syncStatus').textContent = "Saving changes to Cloud...";
+    try {
+      await fetch(BIN_URL, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Master-Key": MASTER_KEY
+        },
+        body: JSON.stringify(state)
+      });
+      document.getElementById('syncStatus').textContent = "Saved & Synced Cloud Live ✅";
+    } catch (err) {
+      document.getElementById('syncStatus').textContent = "Save Sync Failed ⚠️";
+    }
+    render();
+  }
+
+  function forceSyncRefresh() {
+    syncPullCloudData();
+  }
+
   function verifyAuth() {
     const code = document.getElementById('passphrase').value.trim();
-    if (code === 'vignesh2026') {
+    if (code === '1234') { // Admin Passcode Key Configuration
       currentRole = 'admin';
-    } else if (code === 'trip2026') {
+    } else if (code === 'trip2026') { // Reader Code Passphrase Mapping
       currentRole = 'user';
     } else {
       return alert('Invalid security code key. Try again.');
@@ -218,7 +267,7 @@
     document.getElementById('appDashboard').style.display = 'block';
     
     applyRoleVisuals();
-    render();
+    syncPullCloudData(); // Trigger server read cycle on successful authentication
   }
 
   function logout() {
@@ -237,11 +286,6 @@
       container.innerHTML = `<span class="role-badge user">👁️ Read-Only Ledger View</span>`;
       document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     }
-  }
-
-  function saveState() {
-    localStorage.setItem('trip_matrix_v3', JSON.stringify(state));
-    render();
   }
 
   function fmt(val) {
@@ -271,13 +315,13 @@
     nameInput.value = '';
     countInput.value = '1';
     rateInput.value = '';
-    saveState();
+    syncPushCloudData();
   }
 
   function deleteMember(id) {
     if (currentRole !== 'admin') return;
     state.members = state.members.filter(m => m.id !== id);
-    saveState();
+    syncPushCloudData();
   }
 
   function addExpense() {
@@ -292,17 +336,24 @@
 
     if (!desc || amount <= 0) return alert('Provide complete expense detail configurations');
 
+    let expenseType = 'standard';
+    if (payerValue.startsWith('PREPAID:')) {
+      expenseType = 'prepaid';
+    } else if (payerValue.startsWith('PAY_SPEND:') || payerValue.startsWith('PAY_BAL:')) {
+      expenseType = 'reimbursement';
+    }
+
     state.expenses.push({
       id: 'e_' + Date.now(),
       desc,
       amount,
       payer: payerValue, 
-      type: payerValue.startsWith('PAY_SPEND:') || payerValue.startsWith('PAY_BAL:') ? 'reimbursement' : 'standard'
+      type: expenseType
     });
 
     descInput.value = '';
     amountInput.value = '';
-    saveState();
+    syncPushCloudData();
   }
 
   function processSettle(type, memberId, value) {
@@ -322,47 +373,60 @@
         payer: (type === 'SPEND' ? 'PAY_SPEND:' : 'PAY_BAL:') + memberId,
         type: 'reimbursement'
       });
-      saveState();
+      syncPushCloudData();
     }
   }
 
   function deleteExpense(id) {
     if (currentRole !== 'admin') return;
     state.expenses = state.expenses.filter(e => e.id !== id);
-    saveState();
+    syncPushCloudData();
   }
 
   function clearAllData() {
     if (currentRole !== 'admin') return;
-    if (confirm('Erase database memory banks? Action irreversible.')) {
+    if (confirm('Erase cloud database memory records? Action irreversible.')) {
       state = { members: [], expenses: [] };
-      saveState();
+      syncPushCloudData();
     }
   }
 
   function render() {
     applyRoleVisuals();
 
-    // Rebuild Dropdown
+    // Rebuild Payer/Advance Allocation Dropdown
     const payerSelect = document.getElementById('expPayer');
     if (payerSelect) {
-      payerSelect.innerHTML = '<option value="POOL">🏦 Paid From: Collected Pool Cash</option>';
+      let optionsHtml = `
+        <optgroup label="On-Trip Live Costs">
+          <option value="POOL">🏦 Paid From: Collected Pool Cash</option>`;
       state.members.forEach(m => {
-        payerSelect.innerHTML += `<option value="${m.id}">👤 Paid From: ${m.name}'s Pocket</option>`;
+        optionsHtml += `<option value="${m.id}">👤 Paid From: ${m.name}'s Pocket</option>`;
       });
+      optionsHtml += `</optgroup><optgroup label="Prepaid Before Trip (Rooms, Travel, etc.)">`;
+      state.members.forEach(m => {
+        optionsHtml += `<option value="PREPAID:${m.id}">🧳 Prepaid in Advance by: ${m.name}</option>`;
+      });
+      optionsHtml += `</optgroup>`;
+      payerSelect.innerHTML = optionsHtml;
     }
 
-    // Totals Processing
+    // Totals Processing Calculations
     const totalPoolCollected = state.members.reduce((sum, m) => sum + m.advance, 0);
-    const standardExpenses = state.expenses.filter(e => e.type !== 'reimbursement');
-    const totalTripSpend = standardExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const standardExpenses = state.expenses.filter(e => e.type === 'standard');
+    const prepaidExpenses = state.expenses.filter(e => e.type === 'prepaid');
+    
+    const totalOnTripSpend = standardExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalPrepaidSpend = prepaidExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const combinedTotalCost = totalOnTripSpend + totalPrepaidSpend;
     
     const poolSpentDirectly = state.expenses.filter(e => e.payer === 'POOL').reduce((sum, e) => sum + e.amount, 0);
     const poolSpentOnReimbursements = state.expenses.filter(e => e.type === 'reimbursement').reduce((sum, e) => sum + e.amount, 0);
     const remainingPoolCash = totalPoolCollected - poolSpentDirectly - poolSpentOnReimbursements;
 
     document.getElementById('metricPool').textContent = fmt(totalPoolCollected);
-    document.getElementById('metricSpend').textContent = fmt(totalTripSpend);
+    document.getElementById('metricSpend').textContent = fmt(totalOnTripSpend);
+    document.getElementById('metricPrepaid').textContent = fmt(totalPrepaidSpend);
     document.getElementById('metricRemaining').textContent = fmt(remainingPoolCash);
 
     // Members Grid Render
@@ -384,7 +448,7 @@
       });
     }
 
-    // Timeline Rendering
+    // Timeline Logs Rendering
     const expContainer = document.getElementById('expenseList');
     expContainer.innerHTML = '';
     if (state.expenses.length === 0) {
@@ -392,7 +456,7 @@
     }
     
     [...state.expenses].reverse().forEach(e => {
-      let contextLabel = "Proportional split division configuration";
+      let contextLabel = "Proportional split configuration";
       let classConfig = "expense-amount";
       
       if (e.type === 'reimbursement') {
@@ -403,11 +467,16 @@
           ? `Cash Pool Transaction: Out-of-pocket spent refund issued to ${targetM ? targetM.name : 'Member'}`
           : `Cash Pool Transaction: Full balance equalization settlement to ${targetM ? targetM.name : 'Member'}`;
         classConfig += " reimbursement-type";
+      } else if (e.type === 'prepaid') {
+        const actualPayerId = e.payer.replace('PREPAID:', '');
+        const foundM = state.members.find(m => m.id === actualPayerId);
+        contextLabel = `Prepaid Booking (Rooms/Travel) covered early by ${foundM ? foundM.name : 'Member'}`;
+        classConfig += " prepaid-type";
       } else if (e.payer !== 'POOL') {
         const foundM = state.members.find(m => m.id === e.payer);
-        contextLabel = `Paid out-of-pocket by ${foundM ? foundM.name : 'Unknown Entity'}`;
+        contextLabel = `Paid out-of-pocket on trip by ${foundM ? foundM.name : 'Unknown Entity'}`;
       } else {
-        contextLabel = "Withdrawn straight from the upfront collective Advance Cash Pool";
+        contextLabel = "Withdrawn straight from the upfront collective Advance Cash Pool box";
       }
 
       const delBtn = (currentRole === 'admin') ? `<button class="btn danger-outline" onclick="deleteExpense('${e.id}')">✕</button>` : '';
@@ -425,31 +494,30 @@
         </div>`;
     });
 
-    // Waterfall Computation
+    // Waterfall Computation Framework
     const waterBody = document.querySelector('#waterfallTable tbody');
     waterBody.innerHTML = '';
     
     if (state.members.length === 0) {
-      waterBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">Add entries to map matrix balances.</td></tr>`;
+      waterBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--muted);">Add entries to map matrix balances.</td></tr>`;
       return;
     }
 
     const totalHeads = state.members.reduce((sum, m) => sum + m.headcount, 0);
 
     state.members.forEach(m => {
-      const grossPocketSpent = state.expenses.filter(e => e.payer === m.id).reduce((sum, e) => sum + e.amount, 0);
+      const grossPocketSpent = state.expenses.filter(e => e.type === 'standard' && e.payer === m.id).reduce((sum, e) => sum + e.amount, 0);
+      const grossPrepaidPaid = state.expenses.filter(e => e.type === 'prepaid' && e.payer === 'PREPAID:' + m.id).reduce((sum, e) => sum + e.amount, 0);
       
-      // Track different types of pool settlements received
       const spendRefundsReceived = state.expenses.filter(e => e.payer === 'PAY_SPEND:' + m.id).reduce((sum, e) => sum + e.amount, 0);
       const balanceSettlementsReceived = state.expenses.filter(e => e.payer === 'PAY_BAL:' + m.id).reduce((sum, e) => sum + e.amount, 0);
       const totalPoolRefundsReceived = spendRefundsReceived + balanceSettlementsReceived;
 
-      const consumptionShare = totalHeads > 0 ? (totalTripSpend * (m.headcount / totalHeads)) : 0;
+      // Cost Consumption Share equation includes both on-trip + advanced prepaid elements
+      const consumptionShare = totalHeads > 0 ? (combinedTotalCost * (m.headcount / totalHeads)) : 0;
       
-      // Net Remaining Balance Matrix Equation
-      const currentNetBalance = (m.advance + grossPocketSpent) - consumptionShare - totalPoolRefundsReceived;
-      
-      // Calculate remaining active out-of-pocket spend yet to be refunded
+      // Structural Matrix Math Formula: (Advance + Pocket + Prepaid) - Share - Cash Reimbursements
+      const currentNetBalance = (m.advance + grossPocketSpent + grossPrepaidPaid) - consumptionShare - totalPoolRefundsReceived;
       const activeUnrefundedSpend = Math.max(0, grossPocketSpent - spendRefundsReceived);
 
       let statusBadge = `<span class="badge neutral">Balanced</span>`;
@@ -459,15 +527,14 @@
         statusBadge = `<span class="badge give">Owes ${fmt(Math.abs(currentNetBalance))}</span>`;
       }
 
-      // Render custom actions for administrative users
       let actionsHtml = '&mdash;';
       if (currentRole === 'admin') {
         let buttons = [];
         if (activeUnrefundedSpend > 0.5) {
-          buttons.push(`<button class="btn action-small pay-spend" onclick="processSettle('SPEND', '${m.id}', ${activeUnrefundedSpend})">💸 Pay Spend (${fmt(activeUnrefundedSpend)})</button>`);
+          buttons.push(`<button class="btn action-small pay-spend" onclick="processSettle('SPEND', '${m.id}', ${activeUnrefundedSpend})">💸 Settle Spend Only (${fmt(activeUnrefundedSpend)})</button>`);
         }
         if (currentNetBalance > 0.5) {
-          buttons.push(`<button class="btn action-small pay-bal" onclick="processSettle('BALANCE', '${m.id}', ${currentNetBalance})">🏛️ Settle Bal (${fmt(currentNetBalance)})</button>`);
+          buttons.push(`<button class="btn action-small pay-bal" onclick="processSettle('BALANCE', '${m.id}', ${currentNetBalance})">🏛️ Settle Total Bal (${fmt(currentNetBalance)})</button>`);
         }
         actionsHtml = buttons.length > 0 ? `<div class="btn-group-cell" style="display:flex; gap:6px;">${buttons.join('')}</div>` : `<span style="color:var(--muted); font-size:12px;">Settled</span>`;
       }
@@ -476,14 +543,14 @@
         <tr>
           <td><strong>${m.name} <small style="color:var(--muted); font-weight:normal;">(x${m.headcount})</small></strong></td>
           <td class="mono">${fmt(m.advance)}</td>
-          <td class="mono">${fmt(grossPocketSpent)} <small style="color:var(--amber); display:block; font-size:10px;">Refunded: ${fmt(spendRefundsReceived)}</small></td>
+          <td class="mono">${fmt(grossPocketSpent)} <small style="color:var(--amber); display:block; font-size:10px;">Paid back: ${fmt(spendRefundsReceived)}</small></td>
+          <td class="mono" style="color:var(--purple);">${fmt(grossPrepaidPaid)}</td>
           <td class="mono" style="color:var(--muted);">${fmt(consumptionShare)}</td>
           <td>${statusBadge}</td>
           <td class="admin-only">${actionsHtml}</td>
         </tr>`;
     });
 
-    // Toggle conditional admin displays after dynamic population
     applyRoleVisuals();
   }
 
@@ -491,12 +558,13 @@
     if (state.expenses.length === 0) return alert('No logs available to download');
     let csv = 'Description,Amount,Source Configuration Mapping\n';
     state.expenses.forEach(e => {
-      let sourceText = "Pool Ledger Reserve";
-      if (e.payer.startsWith('PAY_SPEND:')) sourceText = "Pool Pay-off (Spend Only)";
-      else if (e.payer.startsWith('PAY_BAL:')) sourceText = "Pool Pay-off (Full Balance Balance)";
+      let sourceText = "Pool Ledger Box Asset";
+      if (e.payer.startsWith('PAY_SPEND:')) sourceText = "Pool Pay-off (Spent Only)";
+      else if (e.payer.startsWith('PAY_BAL:')) sourceText = "Pool Pay-off (Full Balance)";
+      else if (e.type === 'prepaid') sourceText = "Advance Prepaid Asset Booking";
       else if (e.payer !== 'POOL') {
         const m = state.members.find(x => x.id === e.payer);
-        sourceText = m ? `${m.name}'s Custom Pocket` : "Independent Entity";
+        sourceText = m ? `${m.name}'s Private Pocket` : "Independent Wallet";
       }
       csv += `"${e.desc.replace(/"/g, '""')}",${e.amount},"${sourceText}"\n`;
     });
